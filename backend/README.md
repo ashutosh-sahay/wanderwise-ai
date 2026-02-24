@@ -1,96 +1,154 @@
-# WanderWise AI Backend
+# WanderWise AI - Travel Planning Agent System
 
-FastAPI backend server for WanderWise AI - an AI-powered travel planning application.
+AI-powered multi-agent travel planning system built with LangGraph and FastAPI.
 
-## Technology Stack
+## Prerequisites
 
-- **Python**: 3.12
-- **Framework**: FastAPI 0.115.6
-- **Server**: Uvicorn 0.34.0
-- **Validation**: Pydantic 2.10.6
-- **Settings**: Pydantic Settings 2.6.1
+- Python 3.11+
+- OpenAI API key
+- Tavily Search API key
 
 ## Setup
 
-### Prerequisites
-
-- Python 3.12+
-- pip
-
-### Installation
-
-1. Create and activate virtual environment:
+### 1. Create Virtual Environment
 
 ```bash
-python3.12 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-2. Install dependencies:
+### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Running the Server
+### 3. Configure Environment Variables
 
-### Development Mode
+Copy the example environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and add your API keys:
+
+```env
+OPENAI_API_KEY=your-openai-api-key-here
+TAVILY_API_KEY=your-tavily-api-key
+```
+
+## Running the Application
+
+### Interactive CLI (Travel Planner)
+
+Run the conversational travel planning interface:
+
+```bash
+source .venv/bin/activate  # Activate venv first
+python interactive_travel_planner.py
+```
+
+Example interaction:
+
+```
+You: Plan a 4-day solo backpacking trip to Rishikesh under ₹15,000.
+I love adventure sports and spiritual experiences.
+Traveling from Delhi next weekend.
+I prefer budget stays and local food.
+
+[System researches and presents plan options]
+
+You: Adventurous Plan
+
+[System creates detailed day-by-day itinerary]
+```
+
+Commands:
+
+- Type your travel requests naturally
+- `exit`, `quit`, or `q` to exit
+
+### API Server
+
+Start the FastAPI server:
 
 ```bash
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Or simply:
+Or:
 
 ```bash
 python main.py
 ```
 
-The API will be available at:
-- **API**: http://localhost:8000
-- **API Docs (Swagger)**: http://localhost:8000/docs
-- **Alternative Docs (ReDoc)**: http://localhost:8000/redoc
+Access:
 
-## API Endpoints
+- API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- Health Check: [http://localhost:8000/api/v1/health](http://localhost:8000/api/v1/health)
 
-### Root & Health
-- **GET** `/api/v1/` - Welcome message and API status
-- **GET** `/api/v1/health` - Health check endpoint
+## Running Tests
 
-See API documentation at http://localhost:8000/docs for interactive API explorer.
+Run all tests:
+
+```bash
+pytest tests/ -v
+```
+
+Run specific test file:
+
+```bash
+python tests/test_weather_agent.py
+```
 
 ## Project Structure
 
 ```
 backend/
-├── main.py              # FastAPI application entry point
-├── requirements.txt     # Python dependencies
-├── app/                 # Application package
-│   ├── api/            # API routes and endpoints
-│   │   └── v1/         # API version 1
-│   │       └── health.py
-│   ├── core/           # Core configuration
-│   │   ├── config.py   # Settings
-│   │   └── app.py      # App factory
-│   ├── models/         # Data models
-│   ├── services/       # Business logic
-│   ├── ai/             # AI and agentic workflow (ready for implementations)
-│   └── utils/          # Utilities
-├── venv/               # Virtual environment (git-ignored)
-└── README.md           # This file
+├── interactive_travel_planner.py  # CLI interface
+├── main.py                        # FastAPI entry point
+├── requirements.txt               # Dependencies
+├── .env                          # Your API keys (create this)
+├── .env.example                  # Template
+│
+├── app/
+│   ├── ai/                       # AI agents and graphs
+│   │   ├── agents/              # Individual agents
+│   │   ├── graph/               # LangGraph workflows
+│   │   └── prompts/             # System prompts
+│   ├── models/                  # Data models
+│   ├── core/                    # Configuration
+│   └── utils/                   # Utilities
+│
+└── tests/                        # Test suite
 ```
 
-See `app/README.md` for detailed structure documentation.
+## Troubleshooting
 
-## Environment Variables
+**ModuleNotFoundError:**
 
-Currently no environment variables are required. When needed, create a `.env` file in this directory.
+```bash
+PYTHONPATH=. python interactive_travel_planner.py
+```
 
-## CORS Configuration
+**Virtual environment not activated:**
 
-The API is configured to accept requests from:
-- `http://localhost:3000` (Frontend development server)
+```bash
+source .venv/bin/activate  # You should see (.venv) in prompt
+```
 
-## Development
+**API key errors:**
 
-The server uses auto-reload in development mode, so changes to the code will automatically restart the server.
+```bash
+# Check if keys are set
+cat .env | grep API_KEY
+```
+
+## Documentation
+
+- `IMPROVEMENT_PLAN.md` - Enhancement roadmap
+- `MERMAID.md` - System architecture mermaid code - copy and paste into mermaid editor to see different blocks
+
+---
+

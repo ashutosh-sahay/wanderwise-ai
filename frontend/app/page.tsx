@@ -1,210 +1,128 @@
 "use client";
 
 import React, { useState } from "react";
-import { StepType, AgentThinking } from "@/types";
-import { Header, Stepper } from "@/components/layout";
-import {
-  InputStep,
-  ProcessingStep,
-  DirectionStep,
-  BudgetStep,
-  FinalStep,
-} from "@/components/features";
-// TODO: Remove mock data imports when backend integration is complete
-// Replace with API service functions
-import {
-  thinkingSequence,
-  travelOptions,
-  budgetItems,
-  mockTripPlan,
-} from "@/lib/mockData";
+import { Message, MessageRole, MessageType } from "@/types";
+import { Header } from "@/components/layout";
+import { ChatWindow, ChatInput, ChatWelcome } from "@/components/chat";
 
 /**
  * Main application component for WanderWise AI
  * 
- * Manages the multi-step workflow for AI-powered travel planning
+ * Simple chat interface for AI-powered travel planning
  */
 export default function Home() {
-  const [step, setStep] = useState<StepType>("input");
-  const [query, setQuery] = useState("");
-  const [currentThinking, setCurrentThinking] = useState("");
-  const [completedSteps, setCompletedSteps] = useState<AgentThinking[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  // TODO: Add state for backend data when integrating with API
-  // const [planId, setPlanId] = useState<string | null>(null);
-  // const [travelOptions, setTravelOptions] = useState<TravelOption[]>([]);
-  // const [budgetData, setBudgetData] = useState<BudgetItem[]>([]);
-  // const [tripPlan, setTripPlan] = useState<TripPlan | null>(null);
-  // const [error, setError] = useState<string | null>(null);
-  // TODO: Add error handling UI component to display API errors
-  // TODO: Add retry logic for failed API calls
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
   /**
-   * Initiates the planning process with agent thinking simulation
-   * 
-   * TODO: Replace with real API call
-   * POST /api/planning/start
-   * Body: { query: string }
-   * Response: { planId: string }
-   * 
-   * TODO: Replace setTimeout simulation with WebSocket/SSE for real-time agent thinking
-   * Connect to: WS /api/planning/{planId}/stream
-   * Listen for agent thinking updates in real-time
+   * Generates unique message ID
    */
-  const handleStartPlanning = async () => {
-    if (!query) return;
-    setIsLoading(true);
-    setStep("processing");
-    setCompletedSteps([]);
+  const generateMessageId = (): string => {
+    return `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  };
 
-    // TODO: Remove mock simulation - replace with real API call
-    // const response = await fetch('/api/planning/start', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ query })
-    // });
-    // const { planId } = await response.json();
-    // setPlanId(planId);
-    
-    // TODO: Replace with WebSocket connection for real-time updates
-    // const ws = new WebSocket(`ws://localhost:8000/api/planning/${planId}/stream`);
+  /**
+   * Adds a new message to the chat
+   */
+  const addMessage = (
+    role: MessageRole,
+    type: MessageType,
+    content: string,
+    metadata?: Message["metadata"]
+  ) => {
+    const newMessage: Message = {
+      id: generateMessageId(),
+      role,
+      type,
+      content,
+      timestamp: new Date(),
+      metadata,
+    };
+    setMessages((prev) => [...prev, newMessage]);
+    return newMessage;
+  };
+
+  /**
+   * Handles user message submission
+   * TODO: Replace with actual backend API call
+   */
+  const handleSendMessage = async (content: string) => {
+    // Add user message
+    addMessage("user", "text", content);
+    setIsTyping(true);
+
+    // TODO: Replace with actual API call to backend
+    // Example WebSocket connection:
+    // const ws = new WebSocket('ws://localhost:8000/api/chat');
+    // ws.send(JSON.stringify({ message: content }));
     // ws.onmessage = (event) => {
     //   const data = JSON.parse(event.data);
-    //   setCurrentThinking(data.message);
-    //   setCompletedSteps(prev => [...prev, data]);
+    //   if (data.type === 'chunk') {
+    //     // Update streaming message
+    //   } else if (data.type === 'done') {
+    //     setIsTyping(false);
+    //   }
     // };
 
-    // Mock simulation - REMOVE when backend is integrated
-    for (let i = 0; i < thinkingSequence.length; i++) {
-      setCurrentThinking(thinkingSequence[i].msg);
-      await new Promise((r) => setTimeout(r, 1000)); // TODO: Remove artificial delay
-      setCompletedSteps((prev) => [...prev, thinkingSequence[i]]);
-    }
+    // Mock response for now
+    await new Promise((r) => setTimeout(r, 1500));
+    
+    const mockResponse = `I'll help you plan that trip! Here's what I can do:
 
-    setIsLoading(false);
-    setStep("direction");
+**Research & Analysis**
+- Check weather patterns for your dates
+- Find the best places to visit
+- Compare accommodation options
+
+**Budget Planning**
+- Break down costs by category
+- Find the best deals
+- Optimize your spending
+
+**Itinerary Creation**
+- Day-by-day schedule
+- Travel logistics
+- Local tips and insights
+
+Would you like me to start planning this trip for you?`;
+
+    addMessage("assistant", "text", mockResponse);
+    setIsTyping(false);
   };
 
   /**
-   * Handles travel option selection
-   * 
-   * TODO: Replace with real API call
-   * POST /api/planning/{planId}/select-option
-   * Body: { optionId: string }
-   * Response: { budget: BudgetItem[], totalBudget: string, strategyId: string }
+   * Starts a new chat conversation
    */
-  const handleSelectOption = async (optionId: string) => {
-    setIsLoading(true);
-    setStep("processing");
-    
-    // TODO: Replace with real API call
-    // const response = await fetch(`/api/planning/${planId}/select-option`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ optionId })
-    // });
-    // const budgetData = await response.json();
-    // setBudgetData(budgetData.items);
-    
-    setCurrentThinking(
-      "Allocating budget resources and checking live availability peaks...",
-    );
-    await new Promise((r) => setTimeout(r, 1500)); // TODO: Remove artificial delay
-    setIsLoading(false);
-    setStep("budget");
+  const handleNewChat = () => {
+    setMessages([]);
+    setIsTyping(false);
   };
 
-  /**
-   * Handles budget approval
-   * 
-   * TODO: Replace with real API call
-   * POST /api/planning/{planId}/approve-budget
-   * Body: { approved: true }
-   * Response: { tripPlan: TripPlan }
-   */
-  const handleApproveBudget = async () => {
-    setIsLoading(true);
-    setStep("processing");
-    
-    // TODO: Replace with real API call
-    // const response = await fetch(`/api/planning/${planId}/approve-budget`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ approved: true })
-    // });
-    // const tripPlan = await response.json();
-    // setTripPlan(tripPlan);
-    
-    setCurrentThinking(
-      "Validating logistics and generating final execution dossier...",
-    );
-    await new Promise((r) => setTimeout(r, 1500)); // TODO: Remove artificial delay
-    setIsLoading(false);
-    setStep("final");
-  };
-
-  /**
-   * Handles budget recalibration request
-   * 
-   * TODO: Implement recalibration API call
-   * POST /api/planning/{planId}/recalibrate
-   * Body: { constraints: { budget?: number, duration?: number, ... } }
-   * Response: { budget: BudgetItem[], totalBudget: string }
-   */
-  const handleRecalibrate = () => {
-    // TODO: Replace with real API call
-    // const response = await fetch(`/api/planning/${planId}/recalibrate`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ constraints: {} })
-    // });
-    // const updatedBudget = await response.json();
-    // setBudgetData(updatedBudget.items);
-    console.log("Recalibrating budget parameters...");
-  };
+  const showWelcome = messages.length === 0;
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-slate-900 font-sans selection:bg-stone-200">
-      <Header currentStep={step} />
+    <div className="h-screen flex flex-col bg-[#FDFCFB] text-slate-900 font-sans selection:bg-stone-200">
+      <Header 
+        isAgentActive={isTyping}
+        onNewChat={messages.length > 0 ? handleNewChat : undefined}
+      />
 
-      <main className="max-w-5xl mx-auto px-6 pt-12 pb-32">
-        {step === "input" && (
-          <InputStep
-            query={query}
-            onQueryChange={setQuery}
-            onStartPlanning={handleStartPlanning}
+      <main className="flex-1 flex flex-col overflow-hidden w-full">
+        {showWelcome ? (
+          <ChatWelcome />
+        ) : (
+          <ChatWindow
+            messages={messages}
+            isTyping={isTyping}
           />
         )}
-
-        {step === "processing" && (
-          <ProcessingStep
-            currentThinking={currentThinking}
-            completedSteps={completedSteps}
-          />
-        )}
-
-        {step === "direction" && (
-          <DirectionStep
-            options={travelOptions} // TODO: Replace with travelOptions state from API
-            onSelectOption={handleSelectOption}
-          />
-        )}
-
-        {step === "budget" && (
-          <BudgetStep
-            totalBudget="13,400" // TODO: Replace with budgetData.totalBudget from API
-            strategyId="RS-402" // TODO: Replace with budgetData.strategyId from API
-            items={budgetItems} // TODO: Replace with budgetData.items from API
-            onApprove={handleApproveBudget}
-            onRecalibrate={handleRecalibrate}
-          />
-        )}
-
-        {step === "final" && <FinalStep tripPlan={mockTripPlan} />} {/* TODO: Replace with tripPlan state from API */}
+        
+        <ChatInput
+          onSendMessage={handleSendMessage}
+          disabled={isTyping}
+          placeholder="Describe your dream trip..."
+        />
       </main>
-
-      <Stepper currentStep={step} />
     </div>
   );
 }
