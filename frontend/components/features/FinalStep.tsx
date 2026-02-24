@@ -172,7 +172,7 @@ export const FinalStep: React.FC<FinalStepProps> = ({ tripPlan }) => {
             </h5>
             <p className="text-stone-400 text-xs font-light px-4 mb-6">
               Our agents can adjust the entire workflow based on new constraints
-              like "Reduce budget to ₹10k" or "Add extra day for trekking".
+              like &quot;Reduce budget to ₹10k&quot; or &quot;Add extra day for trekking&quot;.
             </p>
             <Button 
               variant="outline" 
@@ -207,7 +207,7 @@ export const FinalStep: React.FC<FinalStepProps> = ({ tripPlan }) => {
                     {tip.title}
                   </p>
                   <p className="text-sm leading-relaxed text-stone-300 font-light italic">
-                    "{tip.body}"
+                    &quot;{tip.body}&quot;
                   </p>
                 </div>
               ))}

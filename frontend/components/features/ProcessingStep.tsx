@@ -28,7 +28,7 @@ export const ProcessingStep: React.FC<ProcessingStepProps> = ({
             Agent Intelligence
           </h3>
           <p className="text-xl font-medium text-stone-900 italic">
-            "{currentThinking}"
+            &quot;{currentThinking}&quot;
           </p>
         </div>
 

@@ -1,5 +1,4 @@
 import React from "react";
-import { ArrowRight } from "lucide-react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "outline";

@@ -1,45 +1,54 @@
 import React from "react";
-import { Compass } from "lucide-react";
-import { StepType } from "@/types";
+import { Compass, Plus } from "lucide-react";
 
 interface HeaderProps {
-  currentStep: StepType;
+  isAgentActive?: boolean;
+  onNewChat?: () => void;
 }
 
 /**
  * Application header with navigation and status indicator
  */
-export const Header: React.FC<HeaderProps> = ({ currentStep }) => {
+export const Header: React.FC<HeaderProps> = ({ 
+  isAgentActive = false,
+  onNewChat 
+}) => {
   return (
-    <header className="h-20 border-b border-stone-100 bg-white/70 backdrop-blur-xl sticky top-0 z-50 px-6 md:px-12 flex items-center justify-between">
-      <div className="flex items-center gap-2.5">
+    <header className="h-16 border-b border-stone-100 bg-white/90 backdrop-blur-xl sticky top-0 z-50 px-6 md:px-8 flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <div className="bg-stone-900 p-2 rounded-xl shadow-lg shadow-stone-200">
-          <Compass className="text-white" size={20} />
+          <Compass className="text-white" size={18} />
         </div>
-        <span className="text-xl font-semibold tracking-tight text-stone-950">
-          WanderWise
-        </span>
+        <div>
+          <span className="text-lg font-semibold tracking-tight text-stone-950">
+            WanderWise AI
+          </span>
+          <p className="text-[10px] text-stone-500 uppercase tracking-wider font-bold">
+            Travel Planning Assistant
+          </p>
+        </div>
       </div>
 
-      <nav className="hidden md:flex items-center gap-8 text-[13px] font-medium text-stone-400">
-        <button className="text-stone-900 border-b-2 border-stone-900 py-6">
-          Planning
-        </button>
-        <button className="hover:text-stone-900 transition-colors">
-          Past Trips
-        </button>
-      </nav>
-
       <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-50 border border-stone-100 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+        {onNewChat && (
+          <button 
+            onClick={onNewChat}
+            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition-all uppercase tracking-wider"
+          >
+            <Plus size={14} />
+            New Chat
+          </button>
+        )}
+        
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-50 border border-stone-100 text-[10px] font-bold text-stone-500 uppercase tracking-wider">
           <div
             className={`w-1.5 h-1.5 rounded-full ${
-              currentStep === "final"
-                ? "bg-emerald-500"
-                : "bg-amber-400 animate-pulse"
+              isAgentActive
+                ? "bg-amber-400 animate-pulse"
+                : "bg-emerald-500"
             }`}
           ></div>
-          {currentStep === "final" ? "Agent Finalized" : "Agent Active"}
+          {isAgentActive ? "AI Thinking" : "Ready"}
         </div>
       </div>
     </header>
