@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 interface ChatWindowProps {
   messages: Message[];
   isTyping?: boolean;
+  onSelectPlan?: (planName: string) => void;
 }
 
 /**
@@ -14,6 +15,7 @@ interface ChatWindowProps {
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   messages,
   isTyping = false,
+  onSelectPlan,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +31,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     <div className="flex-1 overflow-y-auto px-6 py-8">
       <div className="max-w-3xl mx-auto">
         {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
+          <ChatMessage key={message.id} message={message} onSelectPlan={onSelectPlan} />
         ))}
 
         {isTyping && (
