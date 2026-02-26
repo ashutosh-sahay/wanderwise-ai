@@ -110,6 +110,7 @@ async def research_planning_node(state: TravelAgentState) -> dict:
     subgraph_input = {
         "user_query": state.user_query,
         "destination": state.travel_inputs.destination,
+        "source": state.travel_inputs.source,
         "start_date": state.travel_inputs.start_date,
         "end_date": state.travel_inputs.end_date,
         "budget": state.travel_inputs.budget,

@@ -101,6 +101,7 @@ class TravelPlanState(BaseModel):
     # ========================================
     user_query: Annotated[Optional[str], "Original user travel query"] = None
     destination: Annotated[Optional[str], "Travel destination"] = None
+    source: Annotated[Optional[str], "Starting location/source city"] = None
     start_date: Annotated[Optional[str], "Trip start date"] = None
     end_date: Annotated[Optional[str], "Trip end date"] = None
     budget: Annotated[Optional[float], "Total budget for the trip"] = None
