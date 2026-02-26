@@ -288,8 +288,21 @@ Please create a comprehensive day-by-day itinerary that:
         total_cost=itinerary_data.total_estimated_cost
     )
     
+    # Create a completion message for the user
+    completion_message = f"""Perfect! I've created your complete {itinerary_data.total_days}-day itinerary for {itinerary_data.destination}.
+
+Your trip is scheduled from {itinerary_data.start_date} to {itinerary_data.end_date}."""
+    
+    if itinerary_data.total_estimated_cost:
+        completion_message += f"\n\nTotal estimated cost: ${itinerary_data.total_estimated_cost:.2f}"
+    
+    completion_message += "\n\nYour detailed day-by-day itinerary is ready below! 🎉"
+    
     return {
-        "day_by_day_itinerary": itinerary_data
+        "day_by_day_itinerary": itinerary_data,
+        "conversation_history": state.conversation_history + [
+            {"role": "assistant", "content": completion_message}
+        ]
     }
 
 

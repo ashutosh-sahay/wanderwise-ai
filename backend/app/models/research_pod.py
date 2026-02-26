@@ -37,7 +37,10 @@ class WeatherDetails(BaseModel):
 #####################################################
 
 class TransportationRoute(BaseModel):
-    """Represents a transportation route within or to the destination."""
+    """
+    Represents a transportation route within or to the destination.
+    It can be a travel routes to travel within the destination or a route from source to destination.
+    """
     start_point: Annotated[str, "Starting point of the route"]
     end_point: Annotated[str, "End point of the route"]
     mode_of_transport: Annotated[str, "Mode of transport (e.g. bus, train, car)"]
@@ -53,8 +56,9 @@ class TransportationRoutes(BaseModel):
 
 class StayOption(BaseModel):
     """Represents an accommodation or stay option."""
-    area: Annotated[str, "Area or district where the stay is located"]
-    type_of_stay: Annotated[str, "Type of accommodation (e.g., hotel, hostel, Airbnb)"]
+    area: Annotated[str, "Area or location where the stay is located"]
+    type_of_stay: Annotated[str, "Type of accommodation (e.g., hotel, hostel, Airbnb, resort, homestay, etc.)"]
+    person_capacity: Annotated[int, "Number of people the stay can accommodate"]
     estimated_price_range: Annotated[str, "Estimated price range for the stay"]
     rationale: Annotated[str, "Reason for recommending this stay option"]
     sources: Annotated[List[str], "Sources with information about the stay"]

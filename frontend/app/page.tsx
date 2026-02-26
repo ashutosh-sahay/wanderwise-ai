@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Message, MessageRole, MessageType } from "@/types";
 import { Header } from "@/components/layout";
 import { ChatWindow, ChatInput, ChatWelcome } from "@/components/chat";
+import { sendChatMessage } from "@/lib/api";
 
 /**
  * Main application component for WanderWise AI
@@ -13,6 +14,8 @@ import { ChatWindow, ChatInput, ChatWelcome } from "@/components/chat";
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
+  // Store conversation state for multi-turn conversations
+  const conversationStateRef = useRef<Record<string, unknown> | null>(null);
 
   /**
    * Generates unique message ID
@@ -44,50 +47,61 @@ export default function Home() {
 
   /**
    * Handles user message submission
-   * TODO: Replace with actual backend API call
+   * Sends message to backend AI and updates conversation state
    */
   const handleSendMessage = async (content: string) => {
     // Add user message
     addMessage("user", "text", content);
     setIsTyping(true);
 
-    // TODO: Replace with actual API call to backend
-    // Example WebSocket connection:
-    // const ws = new WebSocket('ws://localhost:8000/api/chat');
-    // ws.send(JSON.stringify({ message: content }));
-    // ws.onmessage = (event) => {
-    //   const data = JSON.parse(event.data);
-    //   if (data.type === 'chunk') {
-    //     // Update streaming message
-    //   } else if (data.type === 'done') {
-    //     setIsTyping(false);
-    //   }
-    // };
+    try {
+      // Send message to backend API
+      const response = await sendChatMessage(content, conversationStateRef.current);
+      
+      // Update conversation state for next turn
+      conversationStateRef.current = response.conversation_state;
+      
+      // Add assistant response with metadata for plans/itinerary
+      addMessage(
+        "assistant", 
+        "text", 
+        response.assistant_message,
+        {
+          has_travel_plans: response.has_travel_plans,
+          has_itinerary: response.has_itinerary,
+          travel_plans: response.travel_plans || null,
+          itinerary: response.itinerary || null,
+        }
+      );
+      
+    } catch (error) {
+      // Handle errors gracefully
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : "Failed to get response from AI. Please try again.";
+      
+      addMessage(
+        "assistant", 
+        "text", 
+        `Sorry, I encountered an error: ${errorMessage}`
+      );
+      
+      console.error("Chat API error:", error);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
-    // Mock response for now
-    await new Promise((r) => setTimeout(r, 1500));
+  /**
+   * Handles plan selection from TravelPlansCard
+   * Sends the selected plan name back to the backend
+   */
+  const handleSelectPlan = async (planName: string) => {
+    // Format plan name nicely for display
+    const displayName = planName.charAt(0).toUpperCase() + planName.slice(1).replace(/-/g, " ");
     
-    const mockResponse = `I'll help you plan that trip! Here's what I can do:
-
-**Research & Analysis**
-- Check weather patterns for your dates
-- Find the best places to visit
-- Compare accommodation options
-
-**Budget Planning**
-- Break down costs by category
-- Find the best deals
-- Optimize your spending
-
-**Itinerary Creation**
-- Day-by-day schedule
-- Travel logistics
-- Local tips and insights
-
-Would you like me to start planning this trip for you?`;
-
-    addMessage("assistant", "text", mockResponse);
-    setIsTyping(false);
+    // Send selection as a user message
+    await handleSendMessage(`I choose the ${displayName} plan`);
   };
 
   /**
@@ -96,6 +110,7 @@ Would you like me to start planning this trip for you?`;
   const handleNewChat = () => {
     setMessages([]);
     setIsTyping(false);
+    conversationStateRef.current = null; // Reset conversation state
   };
 
   const showWelcome = messages.length === 0;
@@ -114,6 +129,7 @@ Would you like me to start planning this trip for you?`;
           <ChatWindow
             messages={messages}
             isTyping={isTyping}
+            onSelectPlan={handleSelectPlan}
           />
         )}
         

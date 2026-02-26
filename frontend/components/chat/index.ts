@@ -5,3 +5,5 @@ export { ChatWelcome } from "./ChatWelcome";
 export { OptionsMessage } from "./OptionsMessage";
 export { BudgetMessage } from "./BudgetMessage";
 export { ItineraryMessage } from "./ItineraryMessage";
+export { TravelPlansCard } from "./TravelPlansCard";
+export { ItineraryCard } from "./ItineraryCard";

@@ -149,6 +149,12 @@ Trip Details:
 - Budget: ${state.budget} USD
 - Travel Vibe: {state.travel_vibe or 'Not specified'}
 
+IMPORTANT: The user's Travel Vibe is "{state.travel_vibe or 'balanced'}". Generate plan names and content that align with this vibe.
+For example:
+- If vibe is "relax", "unwind", or "chill" → create plans like "relaxation", "wellness", "leisure"
+- If vibe is "adventure" → create plans like "adventurous", "explorer", "adrenaline"
+- If vibe is "luxury" → create plans like "luxury", "premium", "deluxe"
+
 Research Data Available:
 
 PLACES TO VISIT:
@@ -163,7 +169,7 @@ TRANSPORTATION:
 ACCOMMODATIONS:
 {state.stay_options.model_dump_json(indent=2) if state.stay_options else 'No data available yet'}
 
-Create 2-3 distinct plan variants (e.g., balanced, adventurous, luxury) that best suit different traveler preferences.
+Create 2-3 distinct plan variants that match the "{state.travel_vibe or 'balanced'}" vibe with different intensity/budget levels.
 """
     
     # Pass formatted message instead of entire state

@@ -18,7 +18,7 @@ load_dotenv()
 model = ChatOpenAI(
     model=settings.OPENAI_MODEL,
     api_key=settings.OPENAI_API_KEY,
-    temperature=0.3,  # Slightly higher for creativity in planning
+    temperature=0.2,
     verbose=True,
 )
 

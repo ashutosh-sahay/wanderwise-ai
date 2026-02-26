@@ -3,26 +3,35 @@ import { Message } from "@/types";
 import { User, Sparkles } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { TravelPlansCard } from "./TravelPlansCard";
+import { ItineraryCard } from "./ItineraryCard";
 
 interface ChatMessageProps {
   message: Message;
+  onSelectPlan?: (planName: string) => void;
 }
 
 /**
- * Simple chat message component with markdown support
+ * Chat message component with markdown support and custom card components
+ * Displays travel plans and itinerary using styled card components
  */
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSelectPlan }) => {
   const isUser = message.role === "user";
+  
+  // Extract itinerary and plans from metadata
+  const hasItinerary = message.metadata?.has_itinerary === true && message.metadata?.itinerary;
+  const hasTravelPlans = message.metadata?.has_travel_plans === true && message.metadata?.travel_plans;
 
   return (
     <div className={`flex gap-3 mb-6 ${isUser ? "justify-end" : "justify-start"}`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-900 flex items-center justify-center">
+        <div className="shrink-0 w-8 h-8 rounded-full bg-stone-900 flex items-center justify-center">
           <Sparkles size={16} className="text-white" />
         </div>
       )}
       
-      <div className={`max-w-[80%] ${isUser ? "order-first" : ""}`}>
+      <div className={`max-w-[85%] ${isUser ? "order-first" : ""}`}>
+        {/* Main message bubble */}
         <div 
           className={`px-4 py-3 rounded-2xl ${
             isUser 
@@ -42,7 +51,21 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             </div>
           )}
         </div>
+
+        {/* Travel Plans Cards */}
+        {!isUser && hasTravelPlans && message.metadata.travel_plans && onSelectPlan && (
+          <TravelPlansCard
+            plans={message.metadata.travel_plans as Record<string, any>}
+            onSelectPlan={onSelectPlan}
+          />
+        )}
+
+        {/* Itinerary Card */}
+        {!isUser && hasItinerary && message.metadata.itinerary && (
+          <ItineraryCard itinerary={message.metadata.itinerary as any} />
+        )}
         
+        {/* Timestamp */}
         <div className={`mt-1 px-2 text-[10px] text-stone-400 ${isUser ? "text-right" : "text-left"}`}>
           {new Date(message.timestamp).toLocaleTimeString([], { 
             hour: '2-digit', 
@@ -52,7 +75,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       </div>
 
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center">
+        <div className="shrink-0 w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center">
           <User size={16} className="text-stone-600" />
         </div>
       )}

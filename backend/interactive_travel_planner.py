@@ -2,16 +2,56 @@
 """
 Interactive Travel Planning Script
 
-This script allows you to interact with the travel planning graph in real-time.
+This script provides a CLI to interact with the travel planning graph in real-time.
 You can provide inputs, see the AI's responses, and make selections interactively.
 
 Usage:
-python interactive_travel_planner.py
-"""    
+    python interactive_travel_planner.py
+"""
 
+import argparse
 import asyncio
+import pyfiglet
 import sys
 from typing import Optional
+
+
+def display_banner(text):
+    # Generate ASCII art using the default font
+    banner = pyfiglet.figlet_format(text)
+    print(banner)
+
+# Parse CLI args (minimal - only version)
+def _parse_cli_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(
+        prog="interactive_travel_planner",
+        description="Interactive CLI for WanderWise AI travel planning. Chat with the assistant to build and refine your trip.",
+        epilog="Type 'exit', 'quit', or 'q' during the session to end.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="store_true",
+        help="Show version and exit.",
+    )
+    args = parser.parse_args()
+
+    if args.version:
+        # Avoid importing app for version to keep --version fast
+        try:
+            from app.core.config import settings
+            print(f"WanderWise AI {getattr(settings, 'APP_VERSION', '0.1.0')}")
+        except Exception:
+            print("WanderWise AI 0.1.0")
+        sys.exit(0)
+
+    return args
+
+
+# Parse CLI args before importing app
+_parse_cli_args()
+
 from pydantic import ValidationError
 
 from app.ai.graph.graph import travel_planning_graph
@@ -20,32 +60,58 @@ from app.utils.logger import get_logger
 
 log = get_logger("interactive_travel_planner")
 
+# -----------------------------------------------------------------------------
+# CLI display constants (separators, widths)
+# -----------------------------------------------------------------------------
+SEP_WIDTH = 80
+SEP_CHAR_MAJOR = "="
+SEP_CHAR_MINOR = "-"
+
+
 
 class InteractiveTravelPlanner:
     """Interactive session manager for travel planning graph."""
-    
+
     def __init__(self):
+        """Initialize the interactive travel planner."""
         self.state: Optional[TravelAgentState] = None
         self.session_active = True
-        
-    def print_separator(self, char: str = "=", length: int = 80):
-        """Print a visual separator."""
+
+    # -------------------------------------------------------------------------
+    # Separators and headers (consistent width and style)
+    # -------------------------------------------------------------------------
+    def print_separator(self, char: str = SEP_CHAR_MAJOR, length: int = SEP_WIDTH) -> None:
+        """Print a single-line visual separator."""
         print(char * length)
-    
-    def print_header(self, text: str):
-        """Print a formatted header."""
-        self.print_separator()
+
+    def print_separator_minor(self, length: int = SEP_WIDTH) -> None:
+        """Print a minor (dash) separator for subsections."""
+        print(SEP_CHAR_MINOR * length)
+
+    def print_header(self, text: str, *, minor: bool = False) -> None:
+        """Print a formatted section header with separators above and below."""
+        char = SEP_CHAR_MINOR if minor else SEP_CHAR_MAJOR
+        print()
+        print(char * SEP_WIDTH)
         print(f"  {text}")
-        self.print_separator()
+        print(char * SEP_WIDTH)
+        print()
     
     def print_assistant_message(self, message: str):
         """Print assistant message with formatting."""
         print(f"\n🤖 Assistant: {message}\n")
     
-    def print_plans(self, plans: dict):
+    def print_plans(self, plans: dict) -> None:
         """Format and print travel plans."""
+        plan_count = len(plans)
+        log.info(
+            "Displaying travel plans",
+            plan_count=plan_count,
+            plan_names=list(plans.keys()),
+        )
+        log.debug("DEBUG FOR PLANS - ",plans)
         self.print_header("🗺️  TRAVEL PLANS")
-        
+
         for idx, (plan_name, plan_details) in enumerate(plans.items(), 1):
             print(f"\n{idx}. **{plan_name.upper()} PLAN**")
             print()
@@ -90,21 +156,28 @@ class InteractiveTravelPlanner:
                 print()
             
             print()
-        
-        self.print_separator("-")
-    
-    def print_itinerary(self, itinerary):
+
+        self.print_separator_minor()
+
+    def print_itinerary(self, itinerary) -> None:
         """Format and print day-by-day itinerary."""
+        log.info(
+            "Displaying day-by-day itinerary",
+            destination=getattr(itinerary, "destination", None),
+            total_days=getattr(itinerary, "total_days", None),
+        )
         self.print_header("📅 YOUR DAY-BY-DAY ITINERARY")
-        
-        print(f"\n🌍 Destination: {itinerary.destination}")
+
+        print(f"🌍 Destination: {itinerary.destination}")
         print(f"📆 Dates: {itinerary.start_date} to {itinerary.end_date}")
         print(f"⏱️  Duration: {itinerary.total_days} days")
         if itinerary.total_estimated_cost:
             print(f"💰 Estimated Total Cost: ${itinerary.total_estimated_cost:.2f}")
-        
-        print("\n" + "="*80 + "\n")
-        
+
+        print()
+        self.print_separator_minor()
+        print()
+
         # Print each day
         for day_plan in itinerary.daily_plans:
             print(f"📍 DAY {day_plan.day_number} - {day_plan.date}")
@@ -133,9 +206,11 @@ class InteractiveTravelPlanner:
                 print(f"   💰 Day Total: ${day_plan.total_estimated_cost:.2f}")
             if day_plan.notes:
                 print(f"   📌 Notes: {day_plan.notes}")
-            
-            print("\n" + "-"*80 + "\n")
-        
+
+            print()
+            self.print_separator_minor()
+            print()
+
         # Packing suggestions
         if itinerary.packing_suggestions:
             print("🎒 PACKING SUGGESTIONS:")
@@ -150,13 +225,15 @@ class InteractiveTravelPlanner:
                 print(f"   • {tip}")
             print()
         
-        print("\n✨ Your complete itinerary is ready! Have an amazing trip! ✈️🌍\n")
-    
+        print()
+        print("✨ Your complete itinerary is ready! Have an amazing trip! ✈️🌍")
+        print()
+
     def get_user_input(self, prompt: str = "You: ") -> str:
         """Get user input with error handling."""
         try:
             user_input = input(prompt).strip()
-            if user_input.lower() in ['exit', 'quit', 'q']:
+            if user_input.lower() in ("exit", "quit", "q"):
                 self.session_active = False
                 return ""
             return user_input
@@ -190,34 +267,32 @@ class InteractiveTravelPlanner:
     async def run_graph_iteration(self, state: TravelAgentState) -> TravelAgentState:
         """
         Run one iteration of the graph.
-        
+
         Returns:
             Updated state after graph execution
         """
         try:
-            log.info("🚀 Starting graph iteration")
-            
             # Invoke graph (async)
             result = await travel_planning_graph.ainvoke(state)
-            
+
             # Convert result dict to TravelAgentState
             updated_state = TravelAgentState(**result)
-            
-            log.info(
-                "✅ Graph iteration complete",
-                awaiting_input=updated_state.awaiting_user_input,
-                has_plans=updated_state.proposed_travel_plans is not None,
-                has_final_plan=updated_state.accepted_travel_plan is not None
-            )
-            
+
             return updated_state
-            
+
         except ValidationError as e:
-            log.error("❌ State validation error", error=str(e))
+            log.error(
+                "State validation error",
+                error=str(e),
+            )
             print(f"\n⚠️  Error: Invalid state - {e}\n")
             raise
         except Exception as e:
-            log.error("❌ Graph execution error", error=str(e), error_type=type(e).__name__)
+            log.error(
+                "Graph execution error",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
             print(f"\n⚠️  Error during graph execution: {e}\n")
             raise
     
@@ -236,6 +311,10 @@ class InteractiveTravelPlanner:
         
         # If final plan is accepted, show summary
         if state.accepted_travel_plan and not state.day_by_day_itinerary:
+            log.info(
+                "Travel plan accepted by user",
+                plan_name=state.selected_plan_name or "unknown",
+            )
             self.print_header("✅ FINAL TRAVEL PLAN")
             plan = state.accepted_travel_plan
             
@@ -263,30 +342,40 @@ class InteractiveTravelPlanner:
             if plan.stay_options and plan.stay_options.options:
                 print(f"🏨 Stays: {len(plan.stay_options.options)} accommodation options")
             
-            print(f"\n⏳ Creating your detailed day-by-day itinerary...\n")
-            self.print_separator()
-        
+            print("⏳ Creating your detailed day-by-day itinerary...")
+            print()
+            self.print_separator_minor()
+
         # If itinerary is created, show it
         if state.day_by_day_itinerary:
             self.print_itinerary(state.day_by_day_itinerary)
             self.print_separator()
     
-    async def start(self):
+    async def start(self) -> None:
         """Start interactive session."""
+        log.info("CLI session started")
         self.print_header("🌍 WanderWise AI - Interactive Travel Planner")
-        print("\nWelcome! Let's plan your perfect trip.")
-        print("(Type 'exit', 'quit', or 'q' to end the session)\n")
-        self.print_separator("-")
-        
+        print("Welcome! Let's plan your perfect trip.")
+        print("(Type 'exit', 'quit', or 'q' to end the session)")
+        print()
+        self.print_separator_minor()
+
         # Get initial user query
-        print("\n💬 Tell me about your travel plans:")
+        print("💬 Tell me about your travel plans:")
         initial_query = self.get_user_input("You: ")
-        
+
         if not initial_query or not self.session_active:
+            log.info(
+                "Session ended before planning",
+                reason="no_initial_query_or_exit",
+            )
             print("\n👋 Goodbye!")
             return
-        
-        # Initialize state
+
+        log.info(
+            "User query received",
+            query_preview=initial_query[:80] + ("..." if len(initial_query) > 80 else ""),
+        )
         self.state = self.initialize_state(initial_query)
         
         # Main conversation loop
@@ -295,53 +384,75 @@ class InteractiveTravelPlanner:
                 # Run graph iteration
                 print("\n⏳ Processing...\n")
                 self.state = await self.run_graph_iteration(self.state)
-                
+
                 # Display updates
                 self.display_state_update(self.state)
-                
+
                 # Check if we're done
                 if self.state.day_by_day_itinerary:
-                    log.info("✅ Travel planning complete - itinerary created")
+                    log.info("Travel planning complete; itinerary created")
                     break
-                
+
                 # Check if waiting for user input
                 if self.state.awaiting_user_input:
                     # Get next user input
                     user_query = self.get_user_input("\nYou: ")
-                    
+
                     if not user_query or not self.session_active:
                         break
-                    
-                    # Update state with new query
+
+                    log.info(
+                        "User reply received",
+                        query_preview=user_query[:80] + ("..." if len(user_query) > 80 else ""),
+                    )
                     self.state = self.update_state_with_query(user_query)
                 else:
                     # Graph completed without waiting for input (shouldn't happen normally)
-                    log.warning("Graph completed without awaiting input")
                     break
-                    
+
             except KeyboardInterrupt:
                 print("\n\n⏸️  Session paused. Type 'exit' to quit or continue chatting.")
                 continue
             except Exception as e:
-                log.error("❌ Unexpected error in main loop", error=str(e))
+                log.error(
+                    "Unexpected error in main loop",
+                    error=str(e),
+                )
                 print(f"\n⚠️  An error occurred: {e}")
                 print("Would you like to continue? (y/n)")
                 choice = self.get_user_input().lower()
-                if choice != 'y':
+                if choice != "y":
                     break
-        
-        print("\n" + "="*80)
+
+        reason = (
+            "itinerary_ready"
+            if (self.state and getattr(self.state, "day_by_day_itinerary", None))
+            else "user_exit"
+        )
+        log.info(
+            "CLI session ended",
+            reason=reason,
+        )
+        print()
+        self.print_separator()
         print("  Thank you for using WanderWise AI! Safe travels! 🌍✈️")
-        print("="*80 + "\n")
+        self.print_separator()
+        print()
 
 
-async def main():
-    """Main entry point."""
+async def main() -> None:
+    """Main entry point: run the interactive planner."""
     try:
+        display_banner("WanderWise AI")    
+
         planner = InteractiveTravelPlanner()
         await planner.start()
     except Exception as e:
-        log.error("❌ Fatal error", error=str(e))
+        log.error(
+            "Fatal error",
+            error=str(e),
+            error_type=type(e).__name__,
+        )
         print(f"\n⚠️  Fatal error: {e}\n")
         sys.exit(1)
 
