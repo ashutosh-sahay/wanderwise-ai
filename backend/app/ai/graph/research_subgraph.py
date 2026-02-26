@@ -3,6 +3,8 @@ from langgraph.graph import END, StateGraph
 from app.ai.agents.research_pod.places_to_visit_agent import places_to_visit_agent
 from app.ai.agents.research_pod.research_synthesizer import research_synthesizer_agent
 from app.ai.agents.research_pod.weather_agent import weather_agent
+from app.ai.agents.research_pod.transport_finder import transport_finder_agent
+from app.ai.agents.research_pod.stay_finder import stay_finder_agent
 from app.models.research_pod import TravelPlanState, WeatherDetails
 from app.utils.logger import get_logger
 
@@ -103,6 +105,68 @@ async def weather_node(state: TravelPlanState) -> dict:
     return {"weather_details": weather_data}
 
 
+async def transport_node(state: TravelPlanState) -> dict:
+    """
+    Calls transport_finder_agent and writes to state.transportation_routes.
+    Uses ainvoke for non-blocking parallel execution.
+    """
+    log.info(f"🚗 Researching transportation options for {state.destination}")
+    
+    # Format specific query with destination, source, and preferences
+    query = f"Research transportation options and routes for {state.destination}."
+    if state.source:
+        query += f" Traveling from {state.source} to {state.destination}."
+    if state.start_date and state.end_date:
+        query += f" Travel dates: {state.start_date} to {state.end_date}."
+    elif state.start_date:
+        query += f" Travel starts on {state.start_date}."
+    if state.budget:
+        query += f" Budget: ${state.budget}."
+    if state.travel_vibe:
+        query += f" Travel vibe: {state.travel_vibe}."
+    
+    # Pass formatted message instead of entire state
+    result = await transport_finder_agent.ainvoke({"messages": [{"role": "user", "content": query}]})
+    
+    # Extract structured response from create_agent result
+    transport_data = result["structured_response"]
+    log.info(
+        f"✅ Transportation research complete for {state.destination}",
+        routes_count=len(transport_data.routes) if transport_data and transport_data.routes else 0
+    )
+    return {"transportation_routes": transport_data}
+
+
+async def stay_node(state: TravelPlanState) -> dict:
+    """
+    Calls stay_finder_agent and writes to state.stay_options.
+    Uses ainvoke for non-blocking parallel execution.
+    """
+    log.info(f"🏨 Researching accommodation options for {state.destination}")
+    
+    # Format specific query with destination, dates, and preferences
+    query = f"Research accommodation and stay options in {state.destination}."
+    if state.start_date and state.end_date:
+        query += f" Travel dates: {state.start_date} to {state.end_date}."
+    elif state.start_date:
+        query += f" Travel starts on {state.start_date}."
+    if state.budget:
+        query += f" Budget: ${state.budget}."
+    if state.travel_vibe:
+        query += f" Travel vibe: {state.travel_vibe}."
+    
+    # Pass formatted message instead of entire state
+    result = await stay_finder_agent.ainvoke({"messages": [{"role": "user", "content": query}]})
+    
+    # Extract structured response from create_agent result
+    stay_data = result["structured_response"]
+    log.info(
+        f"✅ Accommodation research complete for {state.destination}",
+        options_count=len(stay_data.options) if stay_data and stay_data.options else 0
+    )
+    return {"stay_options": stay_data}
+
+
 async def validate_research(state: TravelPlanState) -> dict:
     """
     Validates that all required research data is present before synthesis.
@@ -110,22 +174,21 @@ async def validate_research(state: TravelPlanState) -> dict:
     """
     log.info("🔍 Validating research data completeness - is everything researched ?")
     
-    # Validate required fields (currently implemented)
+    # Validate required fields
     if not state.places_to_visit:
         log.error("❌ Validation failed: places_to_visit is missing")
         raise ValueError("places_to_visit is required but not populated - places agent may have failed")
     if not state.weather_details:
         log.error("❌ Validation failed: weather_details is missing")
         raise ValueError("weather_details is required but not populated - weather agent may have failed")
+    if not state.transportation_routes:
+        log.error("❌ Validation failed: transportation_routes is missing")
+        raise ValueError("transportation_routes is required but not populated - transport agent may have failed")
+    if not state.stay_options:
+        log.error("❌ Validation failed: stay_options is missing")
+        raise ValueError("stay_options is required but not populated - stay agent may have failed")
     
     log.info("✅ Research validation passed - Ready for synthesis")
-    
-    # transportation_routes and stay_options are optional for now
-    # When you implement them, add validation here
-    # if not state.transportation_routes:
-    #     raise ValueError("transportation_routes is required but not populated")
-    # if not state.stay_options:
-    #     raise ValueError("stay_options is required but not populated")
     
     return {}
 
@@ -140,7 +203,7 @@ async def synthesizer_node(state: TravelPlanState) -> dict:
     
     # Format comprehensive message with all research data
     synthesis_query = f"""
-Create 2-3 distinct travel plan variants for {state.destination}.
+Create 3-4 distinct travel plan variants for {state.destination}.
 
 Trip Details:
 - Destination: {state.destination}
@@ -210,6 +273,8 @@ graph = StateGraph(TravelPlanState)
 graph.add_node("coordinator", coordinator_node)
 graph.add_node("places_to_visit", places_to_visit_node)
 graph.add_node("weather", weather_node)
+graph.add_node("transport", transport_node)
+graph.add_node("stay", stay_node)
 graph.add_node("validate_research", validate_research)
 graph.add_node("synthesizer", synthesizer_node)
 
@@ -219,10 +284,14 @@ graph.set_entry_point("coordinator")
 # Parallel fan-out from coordinator
 graph.add_edge("coordinator", "places_to_visit")
 graph.add_edge("coordinator", "weather")
+graph.add_edge("coordinator", "transport")
+graph.add_edge("coordinator", "stay")
 
 # Convergence to validation
 graph.add_edge("places_to_visit", "validate_research")
 graph.add_edge("weather", "validate_research")
+graph.add_edge("transport", "validate_research")
+graph.add_edge("stay", "validate_research")
 
 # Validation to synthesizer
 graph.add_edge("validate_research", "synthesizer")
