@@ -25,10 +25,10 @@ class PlacesToVisit(BaseModel):
 
 class WeatherDetails(BaseModel):
     """Describes the weather details for a destination."""
-    weather_trends: Annotated[str, "Weather trends for the destination"]
+    weather_trends: Annotated[str, "Weather trends during the time"]
     best_time_to_visit: Annotated[str, "Best time to visit the destination"]
     current_temperature: Annotated[str, "Current temperature for the destination"]
-    current_weather_condition: Annotated[str, "General weather conditions for the destination (e.g., sunny, rainy)"]
+    current_weather_condition: Annotated[str, "Current weather conditions for the destination during the travel dates"]
     sources: Annotated[List[str], "Sources for weather information"]
 
 
@@ -41,9 +41,11 @@ class TransportationRoute(BaseModel):
     Represents a transportation route within or to the destination.
     It can be a travel routes to travel within the destination or a route from source to destination.
     """
+    mode_of_transport: Annotated[str, "Mode of transport (e.g. bus, train, car)"]
+    recommendation_rationale: Annotated[str, "Rationale for recommending this transport mode"]
     start_point: Annotated[str, "Starting point of the route"]
     end_point: Annotated[str, "End point of the route"]
-    mode_of_transport: Annotated[str, "Mode of transport (e.g. bus, train, car)"]
+    estimated_cost: Annotated[float, "Estimated cost of the transport"]
     duration: Annotated[str, "Estimated duration of travel"]
 
 class TransportationRoutes(BaseModel):
@@ -87,7 +89,7 @@ class TravelPlan(BaseModel):
 
 
 #####################################################
-# Travel Subgraph State
+# Travel Research Subgraph State
 #####################################################
 
 class TravelPlanState(BaseModel):
@@ -114,6 +116,12 @@ class TravelPlanState(BaseModel):
     weather_details: Annotated[Optional[WeatherDetails], "Research from weather agent"] = None
     transportation_routes: Annotated[Optional[TransportationRoutes], "Research from transportation agent"] = None
     stay_options: Annotated[Optional[StayOptions], "Research from stay agent"] = None
+    
+    # ========================================
+    # DELTA TRACKING FIELDS (for selective re-execution)
+    # ========================================
+    previous_inputs: Annotated[Optional[dict], "Snapshot of inputs from previous run for delta detection"] = None
+    nodes_to_execute: Annotated[Optional[set[str]], "Which research nodes should execute this iteration"] = None
     
     # ========================================
     # OUTPUT FIELD (to parent supervisor)

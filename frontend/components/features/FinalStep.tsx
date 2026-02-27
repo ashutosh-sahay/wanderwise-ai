@@ -11,9 +11,11 @@ import {
   MapPin,
   TrendingUp,
   Sparkles,
+  Download,
 } from "lucide-react";
 import { TripPlan } from "@/types";
 import { Card, Button } from "@/components/ui";
+import { generateItineraryPDF } from "@/utils/pdfGenerator";
 
 interface FinalStepProps {
   tripPlan: TripPlan;
@@ -67,15 +69,12 @@ export const FinalStep: React.FC<FinalStepProps> = ({ tripPlan }) => {
               variant="primary"
               size="lg"
               fullWidth
-              icon={<ExternalLink size={14} />}
+              icon={<Download size={14} />}
               onClick={() => {
-                // TODO: Implement export functionality
-                // Option 1: API endpoint GET /api/planning/{planId}/export?format=pdf|json|html
-                // Option 2: Generate PDF/JSON client-side from tripPlan data
-                // Should download itinerary in selected format
+                generateItineraryPDF(tripPlan);
               }}
             >
-              Export Itinerary
+              Download PDF
             </Button>
             <div className="flex items-center justify-center gap-4 text-[10px] text-stone-400 font-bold uppercase tracking-widest">
               <span className="flex items-center gap-1">

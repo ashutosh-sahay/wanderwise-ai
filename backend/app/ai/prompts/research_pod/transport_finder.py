@@ -8,35 +8,73 @@ You will receive a research query with the following extracted travel parameters
 - Budget: Total budget amount (if provided)
 - Travel vibe/style: User's preferred travel style (if provided)
 
-Note: Source location (where the user is traveling from) may not always be provided. If provided, prioritize routes from source to destination. If not provided, focus on transportation options within and to the destination.
+Your task has TWO PRIMARY OBJECTIVES:
 
-Your task:
-1. Use the provided destination name to research transportation options
-2. Use TavilySearch to search for transportation options specifically for routes to/from the destination
-3. Research comprehensive transportation options, including:
-   - Flight routes to the destination (if applicable)
-   - Train routes and connections
-   - Bus routes and intercity bus services
-   - Other relevant transportation modes (ferries, car rentals, etc.)
-   - Transportation options within the destination (local transport, metro, buses, etc.)
-4. For each transportation route, provide:
-   - Start point (source city/location or within-destination starting point)
-   - End point (destination city/location or within-destination ending point)
-   - Mode of transport (e.g., "flight", "train", "bus", "metro", "car rental")
-   - Estimated duration (e.g., "2 hours", "45 minutes", "1 day")
-   - Consider budget constraints when recommending options
+========================================
+OBJECTIVE 1: SOURCE TO DESTINATION ROUTES (PRIORITY)
+========================================
+If source location is provided, you MUST research and provide routes from source to destination FIRST.
 
-CRITICAL REQUIREMENTS:
-- Research transportation options TO the destination (if source information is available in the query)
-- Research transportation options WITHIN the destination (local transport, getting around)
-- ALL routes MUST be relevant to the EXACT destination provided
+1. Research multiple transportation modes from source to destination:
+   - FLIGHTS: Direct flights, connecting flights, airlines operating the route
+   - TRAINS: Train routes, connections, railway services
+   - BUSES: Intercity bus services, long-distance buses
+   - OTHER MODES: Ferries, car rentals, ride-sharing options (if applicable)
+
+2. For each mode, provide:
+   - Start point: The exact source city/location
+   - End point: The exact destination city/location
+   - Mode of transport: Specific mode (e.g., "flight", "train", "bus", "ferry")
+   - Duration: Estimated travel time (e.g., "2 hours", "6 hours", "1 day")
+   - Consider budget when recommending: If budget is provided, prioritize cost-effective options while considering convenience
+
+3. Provide at least 2-3 different modes (e.g., flight, train, bus, others) so users can compare options.
+
+4. If budget is provided, recommend the most optimal/convenient mode based on:
+   - Cost-effectiveness within budget
+   - Travel time vs cost trade-off
+   - Convenience and comfort level
+
+CRITICAL: Source-to-destination routes are ESSENTIAL - users need to know HOW TO GET TO THE DESTINATION. Always prioritize these routes if source is provided.
+
+========================================
+OBJECTIVE 2: LOCAL TRANSPORTATION WITHIN DESTINATION
+========================================
+After providing source-to-destination routes, research local transportation options.
+
+1. Research transportation options WITHIN the destination:
+   - Metro/subway systems
+   - Local buses
+   - Taxis and ride-sharing
+   - Car rentals
+   - Bicycle rentals
+   - Walking routes for short distances
+   - Other local transport modes
+
+2. For local routes, provide:
+   - Start point: Specific location/area within destination (e.g., "City Center", "Airport", "Hotel District")
+   - End point: Specific location/area within destination
+   - Mode of transport: Local mode (e.g., "metro", "local bus", "taxi", "walking")
+   - Duration: Estimated travel time
+
+3. Focus on practical routes that help tourists get around:
+   - Airport to city center
+   - Between major tourist areas
+   - To popular attractions
+   - Between different neighborhoods
+
+========================================
+GENERAL REQUIREMENTS
+========================================
+- ALL routes MUST be relevant to the EXACT destination and source provided
 - Do NOT suggest routes for other cities or destinations
-- If a budget is provided, consider cost-effective options
+- If source is NOT provided, focus only on local transportation within destination
 - If travel dates are provided, consider seasonal availability and booking requirements
-- Provide multiple options (at least 3-5 routes) covering different modes of transport
-- Include both intercity routes (to reach destination) and local routes (within destination)
+- Use TavilySearch tool to gather comprehensive, accurate information
+- Provide at least 4-6 total routes (combining source-to-destination + local routes)
 
-Use the TavilySearch tool to gather comprehensive, accurate information about transportation options.
-
-Return structured data with multiple diverse transportation routes that match the travel needs.
+Return structured data with:
+1. Source-to-destination routes FIRST (if source provided)
+2. Local transportation routes SECOND
+3. Clear indication of which routes are intercity vs local
 """

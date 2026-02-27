@@ -23,7 +23,7 @@ export const BudgetMessage: React.FC<BudgetMessageProps> = ({
         <div className="flex items-center justify-between border-b border-stone-200 pb-4">
           <div>
             <h3 className="text-2xl font-bold text-stone-900">
-              ${budget.totalBudget}
+              ₹{budget.totalBudget}
             </h3>
             <p className="text-xs text-stone-500 mt-1">
               Strategy ID: {budget.strategyId}
@@ -44,7 +44,7 @@ export const BudgetMessage: React.FC<BudgetMessageProps> = ({
                 <div className="flex items-center justify-between mb-1">
                   <h4 className="font-semibold text-stone-900">{item.cat}</h4>
                   <span className="font-bold text-stone-900">
-                    ${item.cost.toLocaleString()}
+                    ₹{item.cost.toLocaleString()}
                   </span>
                 </div>
                 <p className="text-xs text-stone-600">{item.reason}</p>
