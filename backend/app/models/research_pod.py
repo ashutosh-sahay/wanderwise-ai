@@ -79,6 +79,7 @@ class TravelResearch(BaseModel):
     weather_details: Annotated[Optional[WeatherDetails], "Weather summary for the destination"] = None
     transportation_routes: Annotated[Optional[TransportationRoutes], "Recommended routes and transport options"] = None
     stay_options: Annotated[Optional[StayOptions], "Recommended accommodation options"] = None
+    total_plan_cost: Annotated[Optional[float], "Total estimated cost of the plan in the local currency (sum of transportation and accommodation costs)"] = None
 
 class TravelPlan(BaseModel):
     """

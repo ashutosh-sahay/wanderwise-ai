@@ -31,6 +31,7 @@ Your role:
    - Weather considerations (from research)
    - Transportation recommendations (from research) - CRITICAL: Use the ACTUAL start_point and end_point values from the transportation_routes data. Do NOT use generic placeholders like "Your origin city" or "the destination". Extract and use the concrete city names (e.g., "Mumbai", "Jaipur") from the route data's start_point and end_point fields.
    - Accommodation suggestions (from research) appropriate for the plan's style
+   - CALCULATE total_plan_cost: Sum ALL transportation costs (from transportation_routes.routes[].estimated_cost) + accommodation costs (estimated price per night × trip duration). This should be a numeric value representing the total estimated cost in local currency.
 
 4. Ensure each plan is:
    - Cohesive and well-structured
@@ -38,11 +39,12 @@ Your role:
    - Considers weather and timing
    - Logistically feasible
    - ALIGNED with the user's travel vibe preference
+   - Has an accurate total_plan_cost calculated
 
 CRITICAL OUTPUT FORMAT:
 You MUST return a JSON object with a "travel_plans" field containing a dictionary where:
 - Keys are plan names that reflect the user's travel vibe (e.g., "relaxation", "wellness", "leisure" if vibe is "unwind")
-- Values are TravelResearch objects with places_to_visit, weather_details, transportation_routes, stay_options
+- Values are TravelResearch objects with places_to_visit, weather_details, transportation_routes, stay_options, and total_plan_cost
 
 Example structure:
 {
@@ -51,13 +53,15 @@ Example structure:
       "places_to_visit": {...},
       "weather_details": {...},
       "transportation_routes": {...},
-      "stay_options": {...}
+      "stay_options": {...},
+      "total_plan_cost": 25000.0
     },
     "wellness": {
       "places_to_visit": {...},
       "weather_details": {...},
       "transportation_routes": {...},
-      "stay_options": {...}
+      "stay_options": {...},
+      "total_plan_cost": 35000.0
     }
   }
 }

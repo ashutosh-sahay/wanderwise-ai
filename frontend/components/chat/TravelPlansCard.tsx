@@ -36,11 +36,13 @@ interface TravelResearch {
       end_point: string;
       mode_of_transport: string;
       duration: string;
+      estimated_cost?: number;
     }>;
   };
   stay_options?: {
     options: StayOption[];
   };
+  total_plan_cost?: number;
 }
 
 interface TravelPlansCardProps {
@@ -50,36 +52,60 @@ interface TravelPlansCardProps {
 }
 
 /**
- * Extracts estimated cost from stay options
+ * Calculates total estimated cost for the plan including transportation and accommodation
+ * Prioritizes using total_plan_cost from backend if available, otherwise calculates from components
  */
 function estimateCost(plan: TravelResearch, duration: number = 4): string {
-  if (!plan.stay_options?.options || plan.stay_options.options.length === 0) {
-    return "Contact for pricing";
+  // 1. If backend already calculated total_plan_cost, use that directly
+  if (plan.total_plan_cost && plan.total_plan_cost > 0) {
+    return `₹${Math.round(plan.total_plan_cost).toLocaleString()}`;
   }
 
-  const firstStay = plan.stay_options.options[0];
-  const priceRange = firstStay.estimated_price_range || "";
+  // 2. Otherwise, fallback to calculating from components
+  let totalCost = 0;
+  let hasValidCost = false;
 
-  // Try multiple patterns to extract price
-  // Pattern 1: "$50-100 per night" or "₹500-1000 per night"
-  const perNightMatch = priceRange.match(/(?:[\$₹]|Rs\.?)\s*([\d,]+)(?:\s*[-–]\s*[\d,]+)?/i);
-  if (perNightMatch) {
-    const price = parseInt(perNightMatch[1].replace(/,/g, ""));
-    const estimatedTotal = price * duration;
-    return `₹${estimatedTotal.toLocaleString()}`;
+  // Add transportation costs
+  if (plan.transportation_routes?.routes && plan.transportation_routes.routes.length > 0) {
+    const transportCosts = plan.transportation_routes.routes
+      .filter(route => route.estimated_cost && route.estimated_cost > 0)
+      .reduce((sum, route) => sum + (route.estimated_cost || 0), 0);
+    
+    if (transportCosts > 0) {
+      totalCost += transportCosts;
+      hasValidCost = true;
+    }
   }
 
-  // Pattern 2: Just numbers "500-1000"
-  const numberMatch = priceRange.match(/([\d,]+)(?:\s*[-–]\s*[\d,]+)?/);
-  if (numberMatch) {
-    const price = parseInt(numberMatch[1].replace(/,/g, ""));
-    // Assume it's per night if no currency symbol
-    const estimatedTotal = price * duration;
-    return `₹${estimatedTotal.toLocaleString()}`;
+  // Add accommodation costs (per night × duration)
+  if (plan.stay_options?.options && plan.stay_options.options.length > 0) {
+    const firstStay = plan.stay_options.options[0];
+    const priceRange = firstStay.estimated_price_range || "";
+
+    // Try multiple patterns to extract price per night
+    // Pattern 1: "$50-100 per night" or "₹500-1000 per night"
+    const perNightMatch = priceRange.match(/(?:[\$₹]|Rs\.?)\s*([\d,]+)(?:\s*[-–]\s*[\d,]+)?/i);
+    if (perNightMatch) {
+      const pricePerNight = parseInt(perNightMatch[1].replace(/,/g, ""));
+      totalCost += pricePerNight * duration;
+      hasValidCost = true;
+    } else {
+      // Pattern 2: Just numbers "500-1000"
+      const numberMatch = priceRange.match(/([\d,]+)(?:\s*[-–]\s*[\d,]+)?/);
+      if (numberMatch) {
+        const pricePerNight = parseInt(numberMatch[1].replace(/,/g, ""));
+        totalCost += pricePerNight * duration;
+        hasValidCost = true;
+      }
+    }
   }
 
-  // If we can't parse, return the original range
-  return priceRange || "Contact for pricing";
+  // Return formatted total or fallback message
+  if (hasValidCost && totalCost > 0) {
+    return `₹${totalCost.toLocaleString()}`;
+  }
+
+  return "Contact for pricing";
 }
 
 /**
