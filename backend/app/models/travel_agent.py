@@ -12,7 +12,7 @@ class DayActivity(BaseModel):
     activity_name: Annotated[str, "Name of the activity or place to visit"]
     description: Annotated[str, "Brief description of what to do"]
     location: Annotated[str, "Specific location/address if applicable"]
-    estimated_cost: Annotated[Optional[float], "Estimated cost for this activity in USD"] = None
+    estimated_cost: Annotated[Optional[float], "Estimated cost for this activity in INR"] = None
     travel_time_from_previous: Annotated[Optional[str], "Travel time from previous activity"] = None
     notes: Annotated[Optional[str], "Additional notes, tips, or recommendations"] = None
 
@@ -126,6 +126,7 @@ class TravelAgentState(BaseModel):
     # Extracted parameters
     travel_inputs: Annotated[Optional[TravelInputs], "Extracted travel parameters"] = None
     all_required_inputs_present: Annotated[bool, "Whether all required params are present"] = False
+    previous_travel_inputs: Annotated[Optional[TravelInputs], "Previous travel inputs for delta detection"] = None
     
     # Research results
     proposed_travel_plans: Annotated[Optional[TravelPlan], "2-3 plan variants from research"] = None
@@ -139,4 +140,3 @@ class TravelAgentState(BaseModel):
     
     # Control flow
     awaiting_user_input: Annotated[bool, "Whether graph is waiting for user input"] = False
-

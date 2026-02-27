@@ -95,13 +95,12 @@ export default function Home() {
   /**
    * Handles plan selection from TravelPlansCard
    * Sends the selected plan name back to the backend
+   * IMPORTANT: Send the exact plan name (e.g., "balanced-cultural-leisure") 
+   * to maintain consistency with backend plan keys
    */
   const handleSelectPlan = async (planName: string) => {
-    // Format plan name nicely for display
-    const displayName = planName.charAt(0).toUpperCase() + planName.slice(1).replace(/-/g, " ");
-    
-    // Send selection as a user message
-    await handleSendMessage(`I choose the ${displayName} plan`);
+    // Send the exact plan name to maintain consistency with backend plan keys
+    await handleSendMessage(`I choose the ${planName} plan`);
   };
 
   /**

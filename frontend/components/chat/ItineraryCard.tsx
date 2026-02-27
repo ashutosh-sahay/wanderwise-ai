@@ -1,6 +1,7 @@
 import React from "react";
-import { Card } from "@/components/ui";
-import { Calendar, Clock, MapPin, ExternalLink, CheckCircle, Sparkles } from "lucide-react";
+import { Card, Button } from "@/components/ui";
+import { Calendar, Clock, MapPin, ExternalLink, CheckCircle, Sparkles, Download } from "lucide-react";
+import { generateItineraryPDFFromBackend } from "@/utils/pdfGenerator";
 
 interface DayActivity {
   time: string;
@@ -56,7 +57,7 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
       {/* Header Card */}
       <Card variant="dark" padding="lg" rounded="2xl">
         <div className="space-y-4">
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-2xl font-bold text-white">
                 {itinerary.destination}
@@ -69,16 +70,27 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
                 </div>
               </div>
             </div>
-            {itinerary.total_estimated_cost && (
-              <div className="text-right">
-                <div className="text-xs text-stone-500 uppercase tracking-wider">
-                  Total Budget
+            <div className="flex flex-col items-end gap-3 shrink-0">
+              {itinerary.total_estimated_cost != null && (
+                <div className="text-right">
+                  <div className="text-xs text-stone-500 uppercase tracking-wider">
+                    Total Budget
+                  </div>
+                  <div className="text-2xl font-bold text-white">
+                    ₹{itinerary.total_estimated_cost.toFixed(0)}
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-white">
-                  ${itinerary.total_estimated_cost.toFixed(0)}
-                </div>
-              </div>
-            )}
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Download size={14} />}
+                onClick={() => generateItineraryPDFFromBackend(itinerary)}
+                className="bg-stone-700! text-white! border-stone-600! hover:bg-stone-600!"
+              >
+                Download PDF
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 text-xs text-stone-400">
@@ -109,7 +121,7 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
                 <div className="text-right">
                   <div className="text-xs text-stone-500">Day Total</div>
                   <div className="font-bold text-stone-900">
-                    ${day.total_estimated_cost.toFixed(0)}
+                    ₹{day.total_estimated_cost.toFixed(0)}
                   </div>
                 </div>
               )}
@@ -148,7 +160,7 @@ export const ItineraryCard: React.FC<ItineraryCardProps> = ({ itinerary }) => {
                         {activity.estimated_cost !== undefined &&
                           activity.estimated_cost > 0 && (
                             <span className="text-sm font-bold text-stone-900">
-                              ${activity.estimated_cost.toFixed(0)}
+                              ₹{activity.estimated_cost.toFixed(0)}
                             </span>
                           )}
                       </div>

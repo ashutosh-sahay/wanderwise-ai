@@ -29,7 +29,7 @@ Your role:
 3. For each plan variant, incorporate:
    - Selected places to visit (from research) that match the plan's theme
    - Weather considerations (from research)
-   - Transportation recommendations (from research)
+   - Transportation recommendations (from research) - CRITICAL: Use the ACTUAL start_point and end_point values from the transportation_routes data. Do NOT use generic placeholders like "Your origin city" or "the destination". Extract and use the concrete city names (e.g., "Mumbai", "Jaipur") from the route data's start_point and end_point fields.
    - Accommodation suggestions (from research) appropriate for the plan's style
 
 4. Ensure each plan is:

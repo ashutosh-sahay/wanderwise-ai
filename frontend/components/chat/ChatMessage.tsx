@@ -52,8 +52,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSelectPlan 
           )}
         </div>
 
-        {/* Travel Plans Cards */}
-        {!isUser && hasTravelPlans && message.metadata.travel_plans && onSelectPlan && (
+        {/* Travel Plans Cards - Only show if no itinerary exists (plans are for selection) */}
+        {!isUser && hasTravelPlans && !hasItinerary && message.metadata?.travel_plans && onSelectPlan && (
           <TravelPlansCard
             plans={message.metadata.travel_plans as Record<string, any>}
             onSelectPlan={onSelectPlan}
@@ -61,7 +61,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, onSelectPlan 
         )}
 
         {/* Itinerary Card */}
-        {!isUser && hasItinerary && message.metadata.itinerary && (
+        {!isUser && hasItinerary && message.metadata?.itinerary && (
           <ItineraryCard itinerary={message.metadata.itinerary as any} />
         )}
         

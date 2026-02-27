@@ -98,6 +98,10 @@ async def research_planning_node(state: TravelAgentState) -> dict:
     """
     Delegates to research_subgraph to generate 2-3 travel plan variants.
     Only called when all required inputs are present.
+    
+    Supports delta-based execution:
+    - Passes previous_inputs for delta detection
+    - Preserves previous research results for nodes that don't need re-execution
     """
     log.info(
         "🔬 Step 2: Starting travel research",
@@ -106,9 +110,8 @@ async def research_planning_node(state: TravelAgentState) -> dict:
         duration=f"{state.travel_inputs.start_date} to {state.travel_inputs.end_date}" if state.travel_inputs.start_date else None
     )
     
-    # Prepare input for research subgraph
-    subgraph_input = {
-        "user_query": state.user_query,
+    # Build current inputs snapshot
+    current_inputs = {
         "destination": state.travel_inputs.destination,
         "source": state.travel_inputs.source,
         "start_date": state.travel_inputs.start_date,
@@ -116,6 +119,44 @@ async def research_planning_node(state: TravelAgentState) -> dict:
         "budget": state.travel_inputs.budget,
         "travel_vibe": state.travel_inputs.travel_vibe,
     }
+    
+    # Prepare input for research subgraph
+    subgraph_input = {
+        "user_query": state.user_query,
+        **current_inputs,  # Spread current inputs
+    }
+    
+    # If we have existing plans, pass previous research data and inputs for delta detection
+    if state.proposed_travel_plans and state.proposed_travel_plans.travel_plans:
+        # Get any existing plan to extract previous research results
+        first_plan = next(iter(state.proposed_travel_plans.travel_plans.values()))
+        
+        # Pass previous research results (will be preserved if nodes are skipped)
+        subgraph_input["places_to_visit"] = first_plan.places_to_visit
+        subgraph_input["weather_details"] = first_plan.weather_details
+        subgraph_input["transportation_routes"] = first_plan.transportation_routes
+        subgraph_input["stay_options"] = first_plan.stay_options
+        
+        # Build previous_inputs from previous_travel_inputs for delta detection
+        if state.previous_travel_inputs:
+            previous_inputs = {
+                "destination": state.previous_travel_inputs.destination,
+                "source": state.previous_travel_inputs.source,
+                "start_date": state.previous_travel_inputs.start_date,
+                "end_date": state.previous_travel_inputs.end_date,
+                "budget": state.previous_travel_inputs.budget,
+                "travel_vibe": state.previous_travel_inputs.travel_vibe,
+            }
+        else:
+            # Fallback: if previous_travel_inputs not tracked, assume first run
+            # (This shouldn't happen if we update previous_travel_inputs correctly)
+            previous_inputs = None
+        
+        subgraph_input["previous_inputs"] = previous_inputs
+        log.info("🔄 Re-running research with delta detection (preserving unchanged data)")
+    else:
+        log.info("🆕 First research run - executing all nodes")
+        subgraph_input["previous_inputs"] = None
     
     # Invoke research subgraph (async)
     result = await research_subgraph.ainvoke(subgraph_input)
@@ -127,8 +168,10 @@ async def research_planning_node(state: TravelAgentState) -> dict:
         plan_names=list(result["travel_plans"].keys())
     )
     
+    # Update previous_travel_inputs for next iteration
     return {
         "proposed_travel_plans": TravelPlan(travel_plans=result["travel_plans"]),
+        "previous_travel_inputs": state.travel_inputs,  # Save current inputs as previous for next run
         "awaiting_user_input": True  # Wait for user to select a plan
     }
 
@@ -176,13 +219,21 @@ async def finalize_plan_node(state: TravelAgentState) -> dict:
         selected_plan=state.selected_plan_name
     )
     
-    # Normalize the selected plan name (lowercase, remove " plan" suffix)
-    normalized_name = state.selected_plan_name.lower().replace(" plan", "").strip()
-    
-    # Try to find the plan with case-insensitive matching
+    # Normalize for matching: lowercase, remove " plan" suffix, treat spaces/hyphens the same
+    def _normalize_plan_key(name: str) -> str:
+        s = (name or "").lower().replace(" plan", "").strip()
+        # Unify separators so "balanced cultural leisure" matches "balanced-cultural-leisure"
+        s = s.replace(" ", "-").replace("_", "-")
+        while "--" in s:
+            s = s.replace("--", "-")
+        return s.strip("-")
+
+    normalized_name = _normalize_plan_key(state.selected_plan_name)
+
+    # Try to find the plan with case-insensitive, separator-agnostic matching
     selected_plan = None
     for plan_name, plan_data in state.proposed_travel_plans.travel_plans.items():
-        if plan_name.lower() == normalized_name:
+        if _normalize_plan_key(plan_name) == normalized_name:
             selected_plan = plan_data
             log.info(
                 "✅ Travel plan finalized successfully",
@@ -246,7 +297,7 @@ TRIP DETAILS:
 - Start Date: {state.travel_inputs.start_date or 'Not specified'}
 - End Date: {state.travel_inputs.end_date or 'Not specified'}
 - Duration: {num_days} days
-- Budget: ${state.travel_inputs.budget} USD
+- Budget: ${state.travel_inputs.budget} INR
 - Travel Vibe: {state.travel_inputs.travel_vibe or 'Balanced'}
 - Travel Type: {state.travel_inputs.travel_type or 'Not specified'}
 - Source/Origin: {state.travel_inputs.source or 'Not specified'}
@@ -317,7 +368,7 @@ def route_after_extraction(state: TravelAgentState) -> Literal["research_plannin
     
     - If user just selected a plan: go to finalize
     - If all required inputs present and no plans yet: proceed to research
-    - If plans exist but user wants modifications: proceed to research again
+    - If plans exist but user wants modifications: proceed to research again (delta-based)
     - If missing inputs: wait for human to provide them
     """
     # Check if user just selected a plan
@@ -327,14 +378,23 @@ def route_after_extraction(state: TravelAgentState) -> Literal["research_plannin
     
     # Check if inputs are complete
     if state.all_required_inputs_present:
-        # Only do research if we don't have plans OR user wants modifications
+        # Do research if: (1) no plans yet, OR (2) user is modifying/providing new info
         if not state.proposed_travel_plans:
             log.info("➡️  Routing: All inputs present → Proceeding to research")
             return "research_planning"
         else:
-            # Plans exist but no selection - shouldn't happen normally
-            log.info("➡️  Routing: Plans already exist → Waiting for selection")
-            return "human_input"
+            # Plans exist - check if user is modifying parameters or just asking questions
+            # If user_intent is "providing_info" or "modifying_request", they're making changes
+            from app.ai.agents.travel_agent import travel_agent
+            
+            # Get the last AI response to check intent
+            last_messages = state.conversation_history[-2:] if len(state.conversation_history) >= 2 else []
+            
+            # If the last message was from assistant with response about modifications, re-run research
+            # For now, assume if plans exist and user provided new input with all_required_inputs_present,
+            # they are modifying the request - so re-run research with delta detection
+            log.info("➡️  Routing: Plans exist but user modified parameters → Re-running research (delta-based)")
+            return "research_planning"
     else:
         log.info("➡️  Routing: Missing inputs → Waiting for user input")
         return "human_input"  # END and wait for user

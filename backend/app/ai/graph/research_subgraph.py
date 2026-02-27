@@ -11,17 +11,96 @@ from app.utils.logger import get_logger
 log = get_logger("research_subgraph")
 
 # ========================================
+# DEPENDENCY MAPPING FOR DELTA EXECUTION
+# ========================================
+
+NODE_DEPENDENCIES = {
+    "destination": {"places_to_visit", "weather", "transport", "stay"},  # Full re-run
+    "source": {"transport"},
+    "start_date": {"transport", "stay", "weather"},
+    "end_date": {"transport", "stay", "weather"},
+    "budget": {"transport", "stay", "places_to_visit"},
+    "travel_vibe": {"places_to_visit", "stay"},
+}
+
+
+def detect_nodes_to_execute(previous: dict, current: dict) -> set[str]:
+    """
+    Determines which research nodes need re-execution based on input delta.
+    
+    Args:
+        previous: Dictionary of previous input values
+        current: Dictionary of current input values
+    
+    Returns:
+        Set of node names to execute (e.g., {"transport", "stay"})
+        
+    Examples:
+        - destination changed → all nodes
+        - source changed → transport only
+        - dates changed → transport, stay, weather
+        - budget changed → transport, stay, places_to_visit
+    """
+    # Find what changed
+    changed_fields = {
+        field for field in current.keys()
+        if current.get(field) != previous.get(field)
+    }
+    
+    if not changed_fields:
+        # Nothing changed - could skip research entirely or re-synthesize
+        log.info("📌 No input changes detected")
+        return set()
+    
+    log.info(f"🔄 Input changes detected: {changed_fields}")
+    
+    # Map changes to affected nodes
+    nodes_to_run = set()
+    for field in changed_fields:
+        if field in NODE_DEPENDENCIES:
+            affected_nodes = NODE_DEPENDENCIES[field]
+            nodes_to_run.update(affected_nodes)
+            log.debug(f"  • Field '{field}' changed → affects {affected_nodes}")
+    
+    return nodes_to_run
+
+
+def make_conditional_node(node_name: str, node_func):
+    """
+    Wraps a research node to conditionally execute based on nodes_to_execute.
+    
+    If the node is in state.nodes_to_execute, it executes normally.
+    Otherwise, it skips execution and returns empty dict (preserves existing state).
+    
+    Args:
+        node_name: Name of the node (e.g., "transport", "stay")
+        node_func: The actual async node function to wrap
+    
+    Returns:
+        Wrapped async function that checks execution conditions
+    """
+    async def wrapper(state: TravelPlanState) -> dict:
+        # Check if this node should execute
+        if node_name in (state.nodes_to_execute or set()):
+            log.info(f"✅ Executing {node_name} node (input changes detected)")
+            return await node_func(state)
+        else:
+            log.info(f"⏭️  Skipping {node_name} node (no relevant input changes)")
+            return {}  # Empty dict preserves existing state values
+    
+    return wrapper
+
+# ========================================
 # NODE WRAPPER FUNCTIONS (ASYNC)
 # ========================================
 
 async def coordinator_node(state: TravelPlanState) -> dict:
     """
-    Entry point - validates that required input fields are provided.
-    Assumes parent supervisor already populated: destination, dates, budget.
+    Entry point - validates inputs and determines which nodes need re-execution
+    based on input delta from previous run.
     
-    NOTE: No LLM agent needed here - parent supervisor already extracted/parsed
-    all parameters. This node only performs fast validation checks before
-    delegating to specialized research agents.
+    For first run: executes all nodes
+    For subsequent runs: only executes nodes affected by changed inputs
     """
     log.info(
         "🎬 Research subgraph started - Validating inputs",
@@ -40,9 +119,38 @@ async def coordinator_node(state: TravelPlanState) -> dict:
             log.error("❌ Validation failed: budget must be positive", budget=state.budget)
             raise ValueError(f"budget must be positive, got: {state.budget}")
     
-    log.info("✅ Input validation passed - Starting parallel research")
-    # Pass through - input fields already populated by parent
-    return {}
+    # Build current inputs snapshot
+    current_inputs = {
+        "destination": state.destination,
+        "source": state.source,
+        "start_date": state.start_date,
+        "end_date": state.end_date,
+        "budget": state.budget,
+        "travel_vibe": state.travel_vibe,
+    }
+    
+    # Detect changes and determine which nodes to execute
+    if state.previous_inputs is None:
+        # First run - execute all nodes
+        nodes_to_execute = {"places_to_visit", "weather", "transport", "stay"}
+        log.info("🆕 First run - executing all research nodes")
+    else:
+        # Delta detection - only execute affected nodes
+        nodes_to_execute = detect_nodes_to_execute(
+            previous=state.previous_inputs,
+            current=current_inputs
+        )
+        if nodes_to_execute:
+            log.info(f"🔄 Delta detected - re-running nodes: {nodes_to_execute}")
+        else:
+            log.info("✅ No changes detected - will re-synthesize with existing data")
+    
+    log.info("✅ Input validation passed - Starting research execution")
+    
+    return {
+        "nodes_to_execute": nodes_to_execute,
+        "previous_inputs": current_inputs  # Save for next iteration
+    }
 
 
 async def places_to_visit_node(state: TravelPlanState) -> dict:
@@ -169,24 +277,61 @@ async def stay_node(state: TravelPlanState) -> dict:
 
 async def validate_research(state: TravelPlanState) -> dict:
     """
-    Validates that all required research data is present before synthesis.
-    Ensures child agents completed successfully.
+    Validates that required research data is present before synthesis.
+    For delta execution: only validates fields for nodes that were re-executed.
+    For skipped nodes: verifies cached data still exists from previous run.
     """
-    log.info("🔍 Validating research data completeness - is everything researched ?")
+    log.info("🔍 Validating research data completeness")
     
-    # Validate required fields
-    if not state.places_to_visit:
-        log.error("❌ Validation failed: places_to_visit is missing")
-        raise ValueError("places_to_visit is required but not populated - places agent may have failed")
-    if not state.weather_details:
-        log.error("❌ Validation failed: weather_details is missing")
-        raise ValueError("weather_details is required but not populated - weather agent may have failed")
-    if not state.transportation_routes:
-        log.error("❌ Validation failed: transportation_routes is missing")
-        raise ValueError("transportation_routes is required but not populated - transport agent may have failed")
-    if not state.stay_options:
-        log.error("❌ Validation failed: stay_options is missing")
-        raise ValueError("stay_options is required but not populated - stay agent may have failed")
+    nodes_executed = state.nodes_to_execute or set()
+    
+    # Validate places_to_visit
+    if "places_to_visit" in nodes_executed:
+        if not state.places_to_visit:
+            log.error("❌ Validation failed: places_to_visit re-run failed")
+            raise ValueError("places_to_visit was re-executed but not populated - places agent may have failed")
+        log.debug("✓ places_to_visit: re-executed and validated")
+    else:
+        if not state.places_to_visit:
+            log.error("❌ Validation failed: places_to_visit missing from cache")
+            raise ValueError("places_to_visit was skipped but no cached data exists")
+        log.debug("✓ places_to_visit: using cached data")
+    
+    # Validate weather_details
+    if "weather" in nodes_executed:
+        if not state.weather_details:
+            log.error("❌ Validation failed: weather_details re-run failed")
+            raise ValueError("weather was re-executed but not populated - weather agent may have failed")
+        log.debug("✓ weather_details: re-executed and validated")
+    else:
+        if not state.weather_details:
+            log.error("❌ Validation failed: weather_details missing from cache")
+            raise ValueError("weather was skipped but no cached data exists")
+        log.debug("✓ weather_details: using cached data")
+    
+    # Validate transportation_routes
+    if "transport" in nodes_executed:
+        if not state.transportation_routes:
+            log.error("❌ Validation failed: transportation_routes re-run failed")
+            raise ValueError("transport was re-executed but not populated - transport agent may have failed")
+        log.debug("✓ transportation_routes: re-executed and validated")
+    else:
+        if not state.transportation_routes:
+            log.error("❌ Validation failed: transportation_routes missing from cache")
+            raise ValueError("transport was skipped but no cached data exists")
+        log.debug("✓ transportation_routes: using cached data")
+    
+    # Validate stay_options
+    if "stay" in nodes_executed:
+        if not state.stay_options:
+            log.error("❌ Validation failed: stay_options re-run failed")
+            raise ValueError("stay was re-executed but not populated - stay agent may have failed")
+        log.debug("✓ stay_options: re-executed and validated")
+    else:
+        if not state.stay_options:
+            log.error("❌ Validation failed: stay_options missing from cache")
+            raise ValueError("stay was skipped but no cached data exists")
+        log.debug("✓ stay_options: using cached data")
     
     log.info("✅ Research validation passed - Ready for synthesis")
     
@@ -207,9 +352,10 @@ Create 3-4 distinct travel plan variants for {state.destination}.
 
 Trip Details:
 - Destination: {state.destination}
+- Source: {state.source or 'Not specified'}
 - Start Date: {state.start_date or 'Not specified'}
 - End Date: {state.end_date or 'Not specified'}
-- Budget: ${state.budget} USD
+- Budget: Rs. {state.budget} INR
 - Travel Vibe: {state.travel_vibe or 'Not specified'}
 
 IMPORTANT: The user's Travel Vibe is "{state.travel_vibe or 'balanced'}". Generate plan names and content that align with this vibe.
@@ -271,10 +417,11 @@ graph = StateGraph(TravelPlanState)
 
 # Add nodes
 graph.add_node("coordinator", coordinator_node)
-graph.add_node("places_to_visit", places_to_visit_node)
-graph.add_node("weather", weather_node)
-graph.add_node("transport", transport_node)
-graph.add_node("stay", stay_node)
+# Wrap research nodes with conditional execution logic
+graph.add_node("places_to_visit", make_conditional_node("places_to_visit", places_to_visit_node))
+graph.add_node("weather", make_conditional_node("weather", weather_node))
+graph.add_node("transport", make_conditional_node("transport", transport_node))
+graph.add_node("stay", make_conditional_node("stay", stay_node))
 graph.add_node("validate_research", validate_research)
 graph.add_node("synthesizer", synthesizer_node)
 

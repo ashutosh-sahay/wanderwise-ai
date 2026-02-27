@@ -16,7 +16,7 @@ Your responsibilities:
    - Identify if all REQUIRED parameters are present:
      * destination (where they want to go)
      * source (where they're traveling from)
-     * budget (total budget in USD)
+     * budget (total budget in INR)
      * duration (either start_date + end_date OR travel_duration in days)
    - Set `all_required_inputs_present` to true ONLY if all required fields have values
    - List any `missing_required_fields` by name
