@@ -2,7 +2,92 @@
 
 > Autonomous travel planning for the modern nomad
 
-WanderWise AI is an AI-powered web application that helps users plan their travel adventures with intelligent recommendations and personalized itineraries.
+WanderWise AI is an AI-powered web application that helps users plan their travel adventures with intelligent recommendations and personalized itineraries. Describe your trip in plain language and get a fully researched, day-by-day itinerary with real-time data on places, weather, transport, and stays.
+
+---
+
+## Demo
+
+### 1. Landing Page — describe your trip in plain language
+
+![Landing page](artifacts/1.png)
+
+### 2. AI presents multiple plan variants with cost estimates
+
+![Plan selection](artifacts/2.png)
+
+### 3. Detailed day-by-day itinerary generated after plan selection
+
+![Itinerary Day 1](artifacts/3.png)
+
+### 4. Full schedule with timings, costs, and agent insights
+
+![Itinerary Day 2](artifacts/4.png)
+
+### 5. Packing suggestions and contextual travel tips
+
+![Travel tips](artifacts/5.png)
+
+---
+
+## How It Works
+
+WanderWise AI uses a **multi-agent LangGraph pipeline** split into a Main Graph and a Research Subgraph that run in coordination.
+
+### High-level flow
+
+```
+User query
+    │
+    ▼
+[Travel Agent] ── extracts destination, dates, budget, travel vibe
+    │
+    ├─ missing inputs? ──► ask user, wait
+    │
+    ▼
+[Research Subgraph] ── parallel fan-out across 4 specialist agents
+    ├── Places Agent    → attractions, activities, local experiences (Tavily)
+    ├── Weather Agent   → conditions, best times, seasonal trends (Tavily)
+    ├── Transport Agent → routes, options, cost analysis (Tavily)
+    └── Stay Agent      → accommodation options, budget matching (Tavily)
+    │
+    ▼
+[Synthesizer] ── combines research into 2–3 plan variants
+    │
+    ▼
+[Present Plans] ── user picks a plan (or requests modifications)
+    │
+    ▼
+[Itinerary Planner] ── builds complete day-by-day schedule with tips & costs
+    │
+    ▼
+Final itinerary delivered to user
+```
+
+### Key design decisions
+
+| Concern | Approach |
+|---|---|
+| **Parallel research** | Places, Weather, Transport and Stay agents run concurrently via LangGraph fan-out, minimising latency |
+| **Delta re-execution** | When a user modifies a parameter (e.g. changes dates), only the affected research agents re-run — not all four |
+| **Plan variants** | The Synthesizer always produces 2–3 distinct variants (e.g. budget vs comfort vs cultural focus) so the user has real choice |
+| **Human-in-the-loop** | The graph pauses at two checkpoints: missing input collection and plan selection — keeping the user in control |
+| **Streaming UI** | The frontend streams agent responses in real-time so users see progress rather than waiting for a final dump |
+
+### Agent responsibilities
+
+| Agent | Role |
+|---|---|
+| **Travel Agent** | Parameter extraction, intent classification, input validation |
+| **Coordinator** | Delta detection, decides which research agents need to re-run |
+| **Places Agent** | Finds attractions, activities and local experiences |
+| **Weather Agent** | Fetches conditions, best travel windows and weather trends |
+| **Transport Agent** | Researches routes, transport modes and estimated costs |
+| **Stay Agent** | Matches accommodation options to budget and travel vibe |
+| **Synthesizer** | Merges all research into coherent plan variants |
+| **Itinerary Planner** | Produces the final hour-by-hour schedule with costs and tips |
+
+---
 
 ## Project Structure
 
@@ -74,7 +159,7 @@ Both frontend and backend support hot-reloading during development:
 
 ## Project Status
 
-🚧 **Initial Setup Complete** - Basic scaffolding is ready. Features and components will be added incrementally.
+**MVP Complete** — The full agentic planning pipeline is working end-to-end: query intake, parallel research, plan synthesis, plan selection, and day-by-day itinerary generation with streaming UI.
 
 ## Documentation
 
